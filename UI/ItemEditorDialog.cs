@@ -126,11 +126,6 @@ public sealed class ItemEditorDialog : Form
 
         Controls.Add(table);
         LoadItem();
-        _fields.UserDeletingRow += (_, e) =>
-        {
-            if (e.Row is not null && IsLockedSecretRow(e.Row))
-                _deletedSecretFields.Add(EnsureFieldRowState(e.Row).Source!);
-        };
         _fields.RowsRemoved += (_, _) => UpdatePendingNotice();
         AcceptButton = save;
         CancelButton = cancel;
@@ -142,7 +137,7 @@ public sealed class ItemEditorDialog : Form
         {
             Name = "UriValue",
             HeaderText = "URI",
-            Width = 560,
+            Width = 500,
             SortMode = DataGridViewColumnSortMode.NotSortable
         });
         _uris.Columns.Add(new DataGridViewButtonColumn
@@ -154,17 +149,43 @@ public sealed class ItemEditorDialog : Form
             UseColumnTextForButtonValue = true,
             SortMode = DataGridViewColumnSortMode.NotSortable
         });
+        _uris.Columns.Add(new DataGridViewButtonColumn
+        {
+            Name = "DeleteUri",
+            HeaderText = string.Empty,
+            Width = 60,
+            UseColumnTextForButtonValue = false,
+            SortMode = DataGridViewColumnSortMode.NotSortable
+        });
 
         _uris.CellContentClick += Uris_CellContentClick;
+        _uris.CellFormatting += (_, e) =>
+        {
+            if (e.ColumnIndex == 2 && e.RowIndex >= 0 && e.RowIndex < _uris.Rows.Count)
+            {
+                e.Value = _uris.Rows[e.RowIndex].IsNewRow ? string.Empty : "削除";
+                e.FormattingApplied = true;
+            }
+        };
     }
 
     private void Uris_CellContentClick(object? sender, DataGridViewCellEventArgs e)
     {
-        if (e.RowIndex < 0 || e.ColumnIndex != 1 || e.RowIndex >= _uris.Rows.Count)
+        if (e.RowIndex < 0 || e.RowIndex >= _uris.Rows.Count)
             return;
 
         var row = _uris.Rows[e.RowIndex];
         if (row.IsNewRow)
+            return;
+
+        if (e.ColumnIndex == 2)
+        {
+            _uris.EndEdit();
+            _uris.Rows.Remove(row);
+            return;
+        }
+
+        if (e.ColumnIndex != 1)
             return;
 
         _uris.EndEdit();
@@ -206,7 +227,7 @@ public sealed class ItemEditorDialog : Form
         {
             Name = "FieldValue",
             HeaderText = "Value",
-            Width = 240,
+            Width = 180,
             SortMode = DataGridViewColumnSortMode.NotSortable
         });
         _fields.Columns.Add(new DataGridViewComboBoxColumn
@@ -238,6 +259,14 @@ public sealed class ItemEditorDialog : Form
         _fields.Columns.Add(new DataGridViewButtonColumn
         {
             Name = "UpdateFieldValue",
+            HeaderText = string.Empty,
+            Width = 60,
+            UseColumnTextForButtonValue = false,
+            SortMode = DataGridViewColumnSortMode.NotSortable
+        });
+        _fields.Columns.Add(new DataGridViewButtonColumn
+        {
+            Name = "DeleteField",
             HeaderText = string.Empty,
             Width = 60,
             UseColumnTextForButtonValue = false,
@@ -293,6 +322,11 @@ public sealed class ItemEditorDialog : Form
             e.Value = IsLockedSecretRow(row) ? "更新" : string.Empty;
             e.FormattingApplied = true;
         }
+        else if (e.ColumnIndex == 6)
+        {
+            e.Value = "削除";
+            e.FormattingApplied = true;
+        }
     }
 
     private void Fields_CellBeginEdit(object? sender, DataGridViewCellCancelEventArgs e)
@@ -315,11 +349,20 @@ public sealed class ItemEditorDialog : Form
 
     private void Fields_CellContentClick(object? sender, DataGridViewCellEventArgs e)
     {
-        if (e.RowIndex < 0 || e.ColumnIndex < 3 || e.ColumnIndex > 5)
+        if (e.RowIndex < 0 || e.ColumnIndex < 3 || e.ColumnIndex > 6)
             return;
 
         var row = _fields.Rows[e.RowIndex];
-        if (row.IsNewRow || ReadFieldType(row) != 1)
+        if (row.IsNewRow)
+            return;
+
+        if (e.ColumnIndex == 6)
+        {
+            DeleteFieldRow(row);
+            return;
+        }
+
+        if (ReadFieldType(row) != 1)
             return;
 
         _fields.EndEdit();
@@ -380,6 +423,17 @@ public sealed class ItemEditorDialog : Form
         state = new FieldRowState();
         row.Tag = state;
         return state;
+    }
+
+    private void DeleteFieldRow(DataGridViewRow row)
+    {
+        _fields.EndEdit();
+
+        // 既存の非表示項目は、保存時に旧値を履歴へ残す。
+        if (IsLockedSecretRow(row))
+            _deletedSecretFields.Add(EnsureFieldRowState(row).Source!);
+
+        _fields.Rows.Remove(row);
     }
 
     private bool IsLockedSecretRow(DataGridViewRow row) =>

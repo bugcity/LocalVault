@@ -8,7 +8,7 @@ Bitwardenの通常JSONエクスポートを取り込み、PC内だけで使う�
 - Bitwarden通常JSONのインポート
 - Login / Secure Note / Card / Identity / SSH Keyの取り込み
 - フォルダ、URI、TOTP、カスタムフィールドの取り込み（フォルダとTOTPは保持のみで、画面には表示しない。TOTPコードの生成には非対応）
-- URIを1件1行のグリッドで編集し、http/https URIを既定ブラウザで開く
+- URIを1件1行のグリッドで編集し、http/https URIを既定ブラウザで開く（URI・カスタムフィールドとも行ごとの `削除` ボタンで削除）
 - カスタムフィールドは Name / Value / Type のグリッドで編集（Bitwarden type=0 は通常表示、type=1 は既定でマスクし明示操作で表示）
 - 未対応のBitwarden項目を元JSONとして暗号化Vault内に保持
 - Vault一覧（名前・ユーザー名・種類）、検索（名前・ユーザー名・URI）
@@ -76,7 +76,7 @@ OneDrive\LocalVaultBackup\
 
 ## ビルド
 
-Windows + .NET 8 SDK:
+Windows + .NET 10 SDK:
 
 ```powershell
 dotnet restore
